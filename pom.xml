@@ -14,17 +14,18 @@
             <version>1.8.3</version>
         </dependency>
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>RELEASE</version>
-            <scope>compile</scope>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-jfr</artifactId>
+            <version>1.7.0</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>RELEASE</version>
+            <version>5.4.2</version>
             <scope>test</scope>
         </dependency>
+
     </dependencies>
     <build>
         <plugins>

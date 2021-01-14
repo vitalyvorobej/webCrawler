@@ -31,10 +31,12 @@ public class WebCrawlerV4 {
         try {
 
             for (int i = 0; i < WebCrawlerV4.filteredLink.size(); i++) {
-                Connection connection = Jsoup.connect(WebCrawlerV4.filteredLink.get(i)
-                        .substring(0, WebCrawlerV4.filteredLink.get(i).lastIndexOf("#")))
-                        .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0")
-                        .timeout(100);
+                /*Connection connection = Jsoup.connect(WebCrawlerV4.filteredLink.get(i)
+                        .substring(0, WebCrawlerV4.filteredLink.get(i).lastIndexOf(":")))
+                        .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0");*/
+                String url = filteredLink.get(i).substring(1,filteredLink.get(i).lastIndexOf("#"));
+                System.out.println(url);
+                Connection connection = Jsoup.connect(url);
                 Document htmlDocument = connection.get();
                 String bodyText = htmlDocument.body().text();
                 HashMap<String, Integer> coincidenceMap = new HashMap<>();
@@ -68,7 +70,7 @@ public class WebCrawlerV4 {
 
             for (String s : allPagesForScan) {
 
-                Connection connection = Jsoup.connect(s).userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0").timeout(100);
+                Connection connection = Jsoup.connect(s).userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0");
                 Document htmlDocument = connection.get();
                 Elements linksOnPage = htmlDocument.select("a[href]");
                 if (connection.response().statusCode() == 200) {

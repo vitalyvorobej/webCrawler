@@ -6,8 +6,6 @@ import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
-
 public class TestSearch {
     public static void main(String[] args) {
         Set<String> allPages = new HashSet<>();
