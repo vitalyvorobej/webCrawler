@@ -9,25 +9,32 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class WebCrawlerV4 {
-    static Scanner scanner;
-    private static Set<String> allLink = new HashSet<>();
-    private static LinkedList<String> filtredLink = new LinkedList<>();
+    private static final Set<String> allLink = new HashSet<>();
+    private static final LinkedList<String> filteredLink = new LinkedList<>();
 
     public static void main(String[] args) {
         getAllLink(getUserInputRootResource());
-        filterLinkByDepth(allLink);
-        searchWords(filtredLink, getUserInputSeachingWords());
+        filterLinkByDepth();
+        searchWords(getUserInputSearchingWords());
     }
 
-
-    static void searchWords(LinkedList<String> linksForSearch, List<String> wordForSearch) {
-//сделать фильтрацию на вхождения, подсунуть отфильтрованые URL в connection url.substring(0, url.lastIndexOf('/'));
+/**
+ * method scanning filtered list @filteredLink searching needed words and printing result.
+ * @ resultMap - result map contains data where (String) - web_resource, Map<String(contains words for searching),
+ * Integer(counter of words).
+ * HashMap<String(word for search),Integer(result of search)>coincidentMap - map with results of searching.
+ * */
+    static void searchWords(List<String> wordForSearch) {
+//TODO сделать фильтрацию на вхождения, подсунуть отфильтрованые URL в connection url.substring(0, url.lastIndexOf('/'));
 
         HashMap<String, Map<String, Integer>> resultMap = new HashMap<>();
         try {
 
-            for (int i = 0; i < linksForSearch.size(); i++) {
-                Connection connection = Jsoup.connect(linksForSearch.get(i)).userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0").timeout(100).ignoreHttpErrors(true);
+            for (int i = 0; i < WebCrawlerV4.filteredLink.size(); i++) {
+                Connection connection = Jsoup.connect(WebCrawlerV4.filteredLink.get(i)
+                        .substring(0, WebCrawlerV4.filteredLink.get(i).lastIndexOf("#")))
+                        .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0")
+                        .timeout(100);
                 Document htmlDocument = connection.get();
                 String bodyText = htmlDocument.body().text();
                 HashMap<String, Integer> coincidenceMap = new HashMap<>();
@@ -42,57 +49,58 @@ public class WebCrawlerV4 {
                     }
 
                 }
-                resultMap.put(linksForSearch.get(i), coincidenceMap);
+                resultMap.put(WebCrawlerV4.filteredLink.get(i), coincidenceMap);
             }
         } catch (Exception e) {
-            System.out.println(e);
+          e.printStackTrace();
 
         }
         printResult(resultMap);
     }
-
-    static LinkedList<String> filterLinkByDepth(Set<String> allLinkForScanning) {
+/**
+ * searching all link by depth and return result list of sorted links
+ * */
+    static void filterLinkByDepth() {
         int maxDepth = 2;
-        LinkedList<String> allP = new LinkedList<>(allLinkForScanning);
-        Set<String> ad = new HashSet<>();
+        LinkedList<String> allPagesForScan = new LinkedList<>(WebCrawlerV4.allLink);
+        Set<String> chekIsNotUsedLink = new HashSet<>();
         try {
 
-            for (int i = 0; i < allP.size(); i++) {
+            for (String s : allPagesForScan) {
 
-                Connection connection = Jsoup.connect(allP.get(i)).userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0").timeout(100);
+                Connection connection = Jsoup.connect(s).userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0").timeout(100);
                 Document htmlDocument = connection.get();
                 Elements linksOnPage = htmlDocument.select("a[href]");
                 if (connection.response().statusCode() == 200) {
-                    System.out.println("Received web page at " + allP.get(i));
+                    System.out.println("Received web page at " + s);
                 }
                 for (Element link : linksOnPage) {
-                    if (ad.size() < maxDepth) {
-                        ad.add(link.absUrl("href"));
-                        if (!filtredLink.contains(ad)) {
-                            filtredLink.add(String.valueOf(ad));
+                    if (chekIsNotUsedLink.size() < maxDepth) {
+                        chekIsNotUsedLink.add(link.absUrl("href"));
+                        if (!filteredLink.contains(chekIsNotUsedLink.toString())) {
+                            filteredLink.add(String.valueOf(chekIsNotUsedLink));
                         }
                     } else {
-                        ad.clear();
+                        chekIsNotUsedLink.clear();
                         break;
                     }
                 }
 
             }
-            /*for (String l : filtredLink) {
-                System.out.println(l);
-            }*/
 
-        } catch (IOException e) {
-            System.out.println(e);
+        } catch (IOException exception) {
+            exception.printStackTrace();
         }
-        return filtredLink;
     }
 
-
-    static Set<String> getAllLink(String rootUrl) {
+/**
+ * Scanning rootUrl and returned all found links with @Param maxVisitedPages
+ * @ Return Set<String> allLink
+ * */
+    static void getAllLink(String rootUrl) {
         int maxVisitedPages = 5;
         try {
-            Connection connection = Jsoup.connect(rootUrl).userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0");
+            Connection connection = getConnection(rootUrl);
             Document htmlDocument = connection.get();
             Elements linksOnPage = htmlDocument.select("a[href]");
             if (connection.response().statusCode() == 200) {
@@ -110,50 +118,35 @@ public class WebCrawlerV4 {
         } catch (IOException e) {
             System.out.println("Error in out HTTP request " + e);
         }
-        return allLink;
+    }
+/**
+ * Getting connection using JSOUP
+ * */
+    private static Connection getConnection(String rootUrl) {
+        return Jsoup.connect(rootUrl).userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0");
     }
 
-    static int getUserInputMaxVisitedLink() {
-        int maxVisitedPage = 5;
-        /*scanner = new Scanner(System.in);
-        System.out.println("Enter the maximum number of pages visited. Default value = 10_000");
-        maxVisitedPage = scanner.nextInt();*/
-        return maxVisitedPage;
-    }
 
-    static int getUserInputLinkDepth() {
-        int defaultLinkDepth = 2;
-/*        scanner = new Scanner(System.in);
-        System.out.println("Enter search depth. Default value = 8");
-        defaultLinkDepth = scanner.nextInt();*/
-        return defaultLinkDepth;
+/**
+ * Return list with words for search.
+ * */
+    static LinkedList<String> getUserInputSearchingWords() {
+        LinkedList<String> searchingWords = new LinkedList<>();
+        searchingWords.add("Elon");
+        searchingWords.add("Elon Musk");
+        searchingWords.add("Tesla");
+        searchingWords.add("Gigafactory");
+        return searchingWords;
     }
-
-    static LinkedList<String> getUserInputSeachingWords() {
-        LinkedList<String> searching = new LinkedList<>();
-        /*scanner = new Scanner(System.in);
-        System.out.println("Enter the words you want to find on the page. To end the list, enter the command" + " \"done\"");
-        while (true) {
-            String input = scanner.nextLine();
-            if (input.toLowerCase().equals("done"))
-                break;
-            searching.add(input);
-        }*/
-        searching.add("Elon");
-        searching.add("Elon Musk");
-        searching.add("Tesla");
-        searching.add("Gigafactory");
-        return searching;
-    }
-
+/**
+ * Return root url
+ * */
     static String getUserInputRootResource() {
-        String defaultLink = "https://en.wikipedia.org/wiki/Elon_Musk";
-        /*System.out.println("please enter the link what you want to crawling. Example : https://en.wikipedia.org/wiki/Elon_Musk");
-        scanner = new Scanner(System.in);
-        defaultLink = scanner.nextLine();*/
-        return defaultLink;
+        return "https://en.wikipedia.org/wiki/Elon_Musk";
     }
-
+/**
+ * Method print final result map with name of web page,words,counter for words
+ * */
     private static void printResult(HashMap<String, Map<String, Integer>> resultMap) {
         resultMap.forEach((k, v) ->
                 System.out.println(k + " - " +
@@ -162,7 +155,9 @@ public class WebCrawlerV4 {
                                 .collect(Collectors.joining(", "))
                 ));
     }
-
+/**
+ * Method for KMPSearch
+ * */
     static int[] prefixFunction(String sample) {
         int[] values = new int[sample.length()];
         for (int i = 1; i < sample.length(); i++) {
@@ -174,7 +169,9 @@ public class WebCrawlerV4 {
         }
         return values;
     }
-
+/**
+ * Algorithm of Knuth-Morris-Pratt for searching words in text
+ * */
     public static ArrayList<Integer> KMPSearch(String text, String sample) {
         ArrayList<Integer> found = new ArrayList<>();
 
