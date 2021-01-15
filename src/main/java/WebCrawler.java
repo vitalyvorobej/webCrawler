@@ -77,15 +77,17 @@ public class WebCrawler {
      * @param collect - takes as input a sorted List for writing
      */
     static void writeFile(LinkedHashMap<String, Map<String, Integer>> collect) {
+        String aeo = System.getProperty("line.separator");
         try (Writer writer = new FileWriter("d:\\logs\\resultOfWebCrawling.csv")) {
+
             for (Map.Entry<String, Map<String, Integer>> entry : collect.entrySet()) {
                 writer.append(entry.getKey())
                         .append('-')
-                        .append("line.separator");
+                        .append(aeo);
                 writer.append(entry.getValue()
                         .toString())
                         .append(',')
-                        .append("line.separator");
+                        .append(aeo);
 
             }
         } catch (IOException ex) {
