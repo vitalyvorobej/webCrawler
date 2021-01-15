@@ -1,0 +1,2 @@
+Problem statement :\
+Implement a web crawler that traverses websites following predefined link depth(8 by default) and max visited pages limit(10_000 by default). The WebCrawler starts from a predefined URL(seed) and follow links found to dive deeper. The main purpose of this crawler to detect the presence of some terms ont the page and collect statistic, e.g.
