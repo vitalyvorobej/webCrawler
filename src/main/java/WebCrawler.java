@@ -10,7 +10,7 @@ import java.io.Writer;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class WebCrawlerV4 {
+public class WebCrawler {
     private static final Set<String> allLink = new HashSet<>();
     private static final LinkedList<String> filteredLink = new LinkedList<>();
 
@@ -32,7 +32,7 @@ public class WebCrawlerV4 {
         HashMap<String, Map<String, Integer>> resultMap = new HashMap<>();
         try {
 
-            for (int i = 0; i < WebCrawlerV4.filteredLink.size(); i++) {
+            for (int i = 0; i < WebCrawler.filteredLink.size(); i++) {
                 String url = filteredLink.get(i);
                 Connection connection = Jsoup.connect(url);
                 Document htmlDocument = connection.get();
@@ -49,7 +49,7 @@ public class WebCrawlerV4 {
                     }
 
                 }
-                resultMap.put(WebCrawlerV4.filteredLink.get(i), coincidenceMap);
+                resultMap.put(WebCrawler.filteredLink.get(i), coincidenceMap);
             }
         } catch (Exception e) {
             e.printStackTrace();
