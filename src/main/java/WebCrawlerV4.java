@@ -4,7 +4,9 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Writer;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -13,35 +15,31 @@ public class WebCrawlerV4 {
     private static final LinkedList<String> filteredLink = new LinkedList<>();
 
     public static void main(String[] args) {
-        getAllLink(getUserInputRootResource());
-        filterLinkByDepth();
-        searchWords(getUserInputSearchingWords());
+        findAllLinkOnTheRootURL();
+        filteringAllLinksByDepth();
+        findMatchesInTextWriteFileAndPrintResult(getUserInputSearchingWords());
     }
 
-/**
- * method scanning filtered list @filteredLink searching needed words and printing result.
- * @ resultMap - result map contains data where (String) - web_resource, Map<String(contains words for searching),
- * Integer(counter of words).
- * HashMap<String(word for search),Integer(result of search)>coincidentMap - map with results of searching.
- * */
-    static void searchWords(List<String> wordForSearch) {
-//TODO сделать фильтрацию на вхождения, подсунуть отфильтрованые URL в connection url.substring(0, url.lastIndexOf('/'));
-
+    /**
+     * Searches for word matches in filtered links. Calls the method for printing the result and writing to a file
+     *
+     * @param wordForSearch - List of words for search
+     * @value resultMap - result map contains data where (String) - web_resource, Map<String(contains words for searching),Integer(counter of words).
+     * @value coincidenceMap - HashMap <String (name_of_word_for_search),Integer (hit counter)> coincidentMap - map with results of searching.
+     * @value collect - sorts List of resultMap
+     */
+    static void findMatchesInTextWriteFileAndPrintResult(List<String> wordForSearch) {
         HashMap<String, Map<String, Integer>> resultMap = new HashMap<>();
         try {
 
             for (int i = 0; i < WebCrawlerV4.filteredLink.size(); i++) {
-                /*Connection connection = Jsoup.connect(WebCrawlerV4.filteredLink.get(i)
-                        .substring(0, WebCrawlerV4.filteredLink.get(i).lastIndexOf(":")))
-                        .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0");*/
-                String url = filteredLink.get(i).substring(1,filteredLink.get(i).lastIndexOf("#"));
-                System.out.println(url);
+                String url = filteredLink.get(i);
                 Connection connection = Jsoup.connect(url);
                 Document htmlDocument = connection.get();
                 String bodyText = htmlDocument.body().text();
                 HashMap<String, Integer> coincidenceMap = new HashMap<>();
                 for (int j = 0; j < wordForSearch.size(); j++) {
-                    coincidenceMap.put(wordForSearch.get(j), KMPSearch(bodyText, wordForSearch.get(j)).size());
+                    coincidenceMap.put(wordForSearch.get(j), getResultOfKMPSearch(bodyText, wordForSearch.get(j)).size());
                     if (j + 1 >= wordForSearch.size()) {
                         int counter = 0;
                         for (int value : coincidenceMap.values()) {
@@ -54,21 +52,59 @@ public class WebCrawlerV4 {
                 resultMap.put(WebCrawlerV4.filteredLink.get(i), coincidenceMap);
             }
         } catch (Exception e) {
-          e.printStackTrace();
+            e.printStackTrace();
 
         }
-        printResult(resultMap);
+        LinkedHashMap<String, Map<String, Integer>> collect = resultMap.entrySet().stream()
+                .sorted(Map.Entry.comparingByValue(
+                        Comparator.comparingInt(v ->
+                                v.values().stream().mapToInt(Integer::intValue).sum()
+                        )
+                ))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
+                        (oldValue, newValue) -> oldValue,
+                        LinkedHashMap::new));
+
+
+        writeFile(collect);
+        printResult(collect);
+
     }
-/**
- * searching all link by depth and return result list of sorted links
- * */
-    static void filterLinkByDepth() {
+
+    /**
+     * Writing to csv file format
+     *
+     * @param collect - takes as input a sorted List for writing
+     */
+    static void writeFile(LinkedHashMap<String, Map<String, Integer>> collect) {
+        try (Writer writer = new FileWriter("d:\\logs\\resultOfWebCrawling.csv")) {
+            for (Map.Entry<String, Map<String, Integer>> entry : collect.entrySet()) {
+                writer.append(entry.getKey())
+                        .append('-')
+                        .append("line.separator");
+                writer.append(entry.getValue()
+                        .toString())
+                        .append(',')
+                        .append("line.separator");
+
+            }
+        } catch (IOException ex) {
+            ex.printStackTrace(System.err);
+        }
+    }
+
+    /**
+     * Method for searching links by depth and adding to LinkedList<String> allLink
+     *
+     * @value maxDepth - max depth for searching from start url
+     * @value depth - counter for start url
+     */
+    static void filteringAllLinksByDepth() {
         int maxDepth = 2;
-        LinkedList<String> allPagesForScan = new LinkedList<>(WebCrawlerV4.allLink);
-        Set<String> chekIsNotUsedLink = new HashSet<>();
+        int depth = 0;
         try {
 
-            for (String s : allPagesForScan) {
+            for (String s : allLink) {
 
                 Connection connection = Jsoup.connect(s).userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0");
                 Document htmlDocument = connection.get();
@@ -77,13 +113,11 @@ public class WebCrawlerV4 {
                     System.out.println("Received web page at " + s);
                 }
                 for (Element link : linksOnPage) {
-                    if (chekIsNotUsedLink.size() < maxDepth) {
-                        chekIsNotUsedLink.add(link.absUrl("href"));
-                        if (!filteredLink.contains(chekIsNotUsedLink.toString())) {
-                            filteredLink.add(String.valueOf(chekIsNotUsedLink));
-                        }
+                    if (depth < maxDepth) {
+                        depth++;
+                        filteredLink.add(link.absUrl("href"));
                     } else {
-                        chekIsNotUsedLink.clear();
+                        depth = 0;
                         break;
                     }
                 }
@@ -95,14 +129,19 @@ public class WebCrawlerV4 {
         }
     }
 
-/**
- * Scanning rootUrl and returned all found links with @Param maxVisitedPages
- * @ Return Set<String> allLink
- * */
-    static void getAllLink(String rootUrl) {
-        int maxVisitedPages = 5;
+
+    /**
+     * Finds all links at a given URL
+     * searches all links from the start page and adds them to @value allLink
+     *
+     * @value rootUrl - start page for search
+     * @value maxVisitedPages - search width
+     */
+    static void findAllLinkOnTheRootURL() {
+        String rootUrl = "https://en.wikipedia.org/wiki/Elon_Musk";
+        int maxVisitedPages = 10;
         try {
-            Connection connection = getConnection(rootUrl);
+            Connection connection = Jsoup.connect(rootUrl).userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0");
             Document htmlDocument = connection.get();
             Elements linksOnPage = htmlDocument.select("a[href]");
             if (connection.response().statusCode() == 200) {
@@ -121,17 +160,13 @@ public class WebCrawlerV4 {
             System.out.println("Error in out HTTP request " + e);
         }
     }
-/**
- * Getting connection using JSOUP
- * */
-    private static Connection getConnection(String rootUrl) {
-        return Jsoup.connect(rootUrl).userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0");
-    }
 
 
-/**
- * Return list with words for search.
- * */
+    /**
+     * Returns a sheet of words to search for
+     *
+     * @return LinkedList<String>searchingWords - list of words for search
+     */
     static LinkedList<String> getUserInputSearchingWords() {
         LinkedList<String> searchingWords = new LinkedList<>();
         searchingWords.add("Elon");
@@ -140,15 +175,12 @@ public class WebCrawlerV4 {
         searchingWords.add("Gigafactory");
         return searchingWords;
     }
-/**
- * Return root url
- * */
-    static String getUserInputRootResource() {
-        return "https://en.wikipedia.org/wiki/Elon_Musk";
-    }
-/**
- * Method print final result map with name of web page,words,counter for words
- * */
+
+    /**
+     * Prints the final sheet with the page name and hit count
+     *
+     * @param resultMap - a sheet containing a list of all results
+     */
     private static void printResult(HashMap<String, Map<String, Integer>> resultMap) {
         resultMap.forEach((k, v) ->
                 System.out.println(k + " - " +
@@ -156,10 +188,13 @@ public class WebCrawlerV4 {
                                 .map(e -> e.getKey() + " = " + e.getValue())
                                 .collect(Collectors.joining(", "))
                 ));
+
     }
-/**
- * Method for KMPSearch
- * */
+
+    /**
+     * Algorithm for calculating the value of a prefix function
+     * Using for KMPSearch
+     */
     static int[] prefixFunction(String sample) {
         int[] values = new int[sample.length()];
         for (int i = 1; i < sample.length(); i++) {
@@ -171,10 +206,14 @@ public class WebCrawlerV4 {
         }
         return values;
     }
-/**
- * Algorithm of Knuth-Morris-Pratt for searching words in text
- * */
-    public static ArrayList<Integer> KMPSearch(String text, String sample) {
+
+    /**
+     * Algorithm of Knuth-Morris-Pratt for searching words in text
+     * https://en.wikipedia.org/wiki/Knuth%E2%80%93Morris%E2%80%93Pratt_algorithm
+     *
+     * @return ArrayList<Integer> found - a sheet containing the positions of matches in the text
+     */
+    public static ArrayList<Integer> getResultOfKMPSearch(String text, String sample) {
         ArrayList<Integer> found = new ArrayList<>();
 
         int[] prefixFunc = prefixFunction(sample);
